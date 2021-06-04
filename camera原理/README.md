@@ -79,6 +79,11 @@ Android 8.0 引入了 Treble，用于将 CameraHal API 切换到由 HAL 接口�
 
 3. HAL3 基于captureRequest和CaptureResult来实现事件和数据的传递，一个Request会对应一个Result。
 
+# 五、USB摄像头
+
+UVC，全称：USB video class或video device class，是Microsoft与另外几家设备厂商联合退出的为USB视频捕获设备定义的协议标准，目前已成为USB org标准之一。主流操作系统 (如Windows XP SP2 and later, Linux 2.4.6 and later, MacOS 10.5 and later) 都已提供UVC设备驱动，符合UVC规格的硬件设备在不需要安装任何驱动程序下即可在主机中正常使
+
+
 
 
 参考：
