@@ -75,7 +75,7 @@ Android 8.0 引入了 Treble，用于将 CameraHal API 切换到由 HAL 接口�
 
 1. 应用向相机子系统发出request，一个request对应一组结果，request中包含所有配置信息。其中包括分辨率和像素格式；手动传感器、镜头和闪光灯控件；3A 操作模式；RAW 到 YUV 处理控件；以及统计信息的生成等。一次可发起多个请求，而且提交请求时不会出现阻塞。请求始终按照接收的顺序进行处理。
 
-2. 图中看到request中携带了数据容器Surface,交到framework cameraserver中，打包成Camera3OutputStream实例，在一次CameraCaptureSession中包装成Hal request交给HAL层处理.。HAL层获取到处理数据后返回给CameraServer，即CaptureResult通知到Framework，Framework Cameraserver则得到HAL层传来的数据给他放进Stream中的容器Surface中，而这些Surface正是来自应用层封装了Surface的控件，这样App就得到了相机子系统传来的数据。
+2. 图中看到request中携带了数据容器Surface,交到framework cameraserver中，打包成Camera3OutputStream实例，在一次CameraCaptureSession中包装成HAL request交给HAL层处理。HAL层获取到处理数据后返回给CameraServer，即CaptureResult通知到Framework，Framework Cameraserver则得到HAL层传来的数据给他放进Stream中的容器Surface中，而这些Surface正是来自应用层封装了Surface的控件，这样App就得到了相机子系统传来的数据。
 
 3. HAL3 基于captureRequest和CaptureResult来实现事件和数据的传递，一个Request会对应一个Result。
 
