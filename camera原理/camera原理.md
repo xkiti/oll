@@ -1,18 +1,18 @@
-### 背景
+# 背景
 
 微信支付业务功能实现依托于Android Camera，为了能快速着手相关的业务开发需要快速掌握Camera原理。
 
-### 前言
+# 前言
 
 抛开Android系统，从用相机拍照的过程说起。首先，打开相机预览窗口会展示出要拍摄的相片效果，然后我们根据自己的需求调整相应的参数（闪光灯，镜头，光圈等），接着按下快门生成照片存入存储器。回到Android，用户使用相机应来拍照，这里的相机应用其实是真实相机硬件的抽象，具体拍照实现是Android系统通过驱动来控制摄像头完成的。如果把相机应用看做App层，摄像头看做硬件层，那么这两层中间是否存在其他分层呢？Android如何实现层级之间通信的，又是用什么数据格式来通信的呢？
 
-### 一、Android Camera整体框架
+# 一、Android Camera整体框架
 
 为了满足更加复杂的相机应用场景，Google推出Camera2框架代替Camera1框架。这里说的Camera框架默认为Camera2。
 
 下面给出一张官方整体框架图：
 
-![camera整体框架](/Users/xkidi/Documents/learn_camera/camera整体框架.png)
+![camera整体框架](camera整体框架.png)
 
 从图中可以看出Camera大体分为4层：
 
@@ -24,7 +24,7 @@
 
 4）驱动层：数据由硬件到驱动层处理,驱动层接收HAL层数据以及传递Sensor数据给到HAL层（Sensor芯片不同驱动也不同）。
 
-###  二、Camera2 API涉及到的类
+#  二、Camera2 API涉及到的类
 
 1. CameraManager ：是一个负责查询和建立相机连接的系统服务，它的功能不多，这里列出几个 CameraManager 的关键功能：
    1. 将相机信息封装到 CameraCharacteristics 中，并提获取 CameraCharacteristics 实例的方式。
@@ -47,9 +47,9 @@
 
 7. CaptureResult 是每一次 Capture 操作的结果，里面包括了很多状态信息，包括闪光灯状态、对焦状态、时间戳等等。例如你可以在拍照完成的时候，通过 CaptureResult 获取本次拍照时的对焦状态和时间戳。需要注意的是，CaptureResult 并不包含任何图像数据，前面我们在介绍 Surface 的时候说了，图像数据都是从 Surface 获取的。
 
-###三、Android Camera工作大体流程
+# 三、Android Camera工作大体流程
 
-![大体流程](/Users/xkidi/Documents/learn_camera/大体流程.png)
+![大体流程](大体流程.png)
 
 绿色框中是应用开发者需要做的操作,蓝色为AOSP提供的API,黄色为Native Framework Service,紫色为HAL层Service.
 描述一下步骤:
@@ -66,12 +66,12 @@
 
 6. Surface本质上是BufferQueue的使用者和封装者,当CameraServer中App设置来的Surface容器被填满了BufferQueue机制将会通知到应用,此时App中控件取出各自容器中的内容消费掉,Preview控件中的Surface中的内容将通过View提供到SurfaceFlinger中进行合成最终显示出来,即预览;而ImageReader中的Surface被填了,则App将会取出保存成图片文件消费掉。
 
-### 四、Camera Hal3 子系统
+# 四、Camera Hal3 子系统
 
 Android 的相机硬件抽象层 (HAL) 可将 android.hardware.camera2 中较高级别的相机框架 API 连接到底层的相机驱动程序和硬件。
 Android 8.0 引入了 Treble，用于将 CameraHal API 切换到由 HAL 接口描述语言 (HIDL) 定义的稳定接口。
 
-![request整体流程](/Users/xkidi/Documents/learn_camera/request整体流程.png)
+![request整体流程](request整体流程.png)
 
 1. 应用向相机子系统发出request，一个request对应一组结果，request中包含所有配置信息。其中包括分辨率和像素格式；手动传感器、镜头和闪光灯控件；3A 操作模式；RAW 到 YUV 处理控件；以及统计信息的生成等。一次可发起多个请求，而且提交请求时不会出现阻塞。请求始终按照接收的顺序进行处理。
 
