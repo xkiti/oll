@@ -22,12 +22,17 @@ Framework层与HAL层是通过回调进行通信的，CameraHardWareInterface.h�
 3. camera_data_callback: 用于Camera HAL返回数据，返回的数据可以是preview的数据帧或者preview的元数据也可以是jpeg格式的帧数据。其中参数data指定返回的图像数据（指针地址），metadata指定返回图像的元数据（指针地址）。
 4. camera_data_timestamp_callback: 用来从Camera HAL返回帧数据以及对应的时间戳，这个callback用在录像的场景。其中参数timestamp表示生产帧数据的时间戳，msg_type固定为CAMERA_MSG_VIDEO_FRAME(录像类型)，data指向帧数据地址。
 
-### CameraService与Camera HAL通信过程
-client与server连接成功后就会new一个client返回，在client的构造函数中，对Camera设置了notifyCallback、dataCallBack、dataCallBackTimestamp三个回调函数，用于返回底层数据。preview方法调用后，CameraService在startPreviewMode方法中为Camera HAL指定一个预览窗口然后让Camera HAL调用startPreView(),最后通过回调函数源源不断的将数据投递到surfaceview的缓冲区中。因为preview的数据是比较大的，所有数据不会携带着传到上层，而是直接在两个缓冲区之间copy，一个是底层采集数据的缓冲区，另一个是用于显示的surfaceview缓冲区。
+### CameraService与CameraHAL通信过程
+client与server连接成功后就会new一个client返回，在client的构造函数中，对Camera设置了notifyCallback、dataCallBack、dataCallBackTimestamp三个回调函数，用于返回底层数据。preview方法调用后，CameraService在startPreviewMode方法中为CameraHAL指定一个预览窗口然后让CameraHAL调用startPreView(),最后通过回调函数源源不断的将数据投递到surfaceview的缓冲区中。因为preview的数据是比较大的，所有数据不会携带着传到上层，而是直接在两个缓冲区之间copy。(一个是底层采集数据的缓冲区，另一个是用于显示的surfaceview缓冲区)。
 
-# 四、拍照
+### CameraHAL与驱动通信过程
+CamerHAL的startPreview主要完成三项任务，cameraPreviewConfig()、cameraPreviewStar()、开启两个存取buf队列线程。
+1. cameraPreviewConfig,配置预览图像参数：CameraOpen()打开设备节点(/dev/video0)后，可以通过S_FMT（ioctl指令）设置图像像素格式，将数据由硬件抽象层传递到v4l2驱动。或者通过G_FMT得到图像像素格式，将数据由底层驱动返回至硬件抽象层。也可以，通过S_PARM，实现对相机硬件的控制。
+2. cameraPreviewStar,开启预览实际上配置了内存：可以通过REQBUFS(ioctl指令)，系统会调用dma_alloc_coherent()为camera申请一段连续的dma内存。通过QUERYBUF询问内存，将申请到的内存物理地址，虚拟地址等数据从内核空间传递到用户空间。通过QBUF将询问得到的buf加入到队列。
+3. 开启PreviewShowFrameThread和PreviewShowFrameThread：PreviewShowFrameThread通过DQBUF，从队列中取出一个buf数据(一帧数据)。如果相机硬件没有采集到图片，这个线程会在DQBUF过程中阻塞。PreviewShowFrameThread显示一帧数据，通过回调函数，将采集到的图像数据传回CameraService，再由CameraService传递给上层应用。（在预览过程中，CameraService会将数据copy一份到SurfaceFlinger，而不会往上层应用传递）。
 
-# 透过现象看本质
+
+<!-- # 透过现象看本质
 1. 打开相机为什么能看到预览影像？
 2. 相机应用调整参数是如何影响摄像头的？
-3. 按下拍照键的时候发生了什么？
+3. 按下拍照键的时候发生了什么？ -->
