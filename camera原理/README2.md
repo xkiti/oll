@@ -13,7 +13,7 @@ HAL层出现的意义在于向上提供了统一接口，针对不同硬件平�
 # 二、相机初始化
 CameraService在系统启动时new了一个实例，以“media.camera”为名字注册到ServiceManager中。应用层的Cammear.java 调用open方法进入Native的世界，
 在ServiceManager中找到CameraService的Binder代理，调用CameraService的connect方法实例化HAL接口hardware，hardware调用initialize进入HAL层打开Camear驱动。CameraService::connet()返回client的时候，就表明客户端和服务端连接建立。相机完成初始化，可以进行拍照和preview等动作。一个看似简单的Camera初始化过程，经历了好几层的调用。java->JNI->Binder IPC->系统调用(open)
-# 三、相机Preview
+# 三、相机预览
 初始化Camera后开始预览取景preview。所有拥有拍照功能的应用，它在预览的时候都要实现SurfaceHolder.Callback接口，并实现其surfaceCreated、surfaceChanged、surfaceDestoryed三个函数。同时声明一个用于预览的窗口SurfaceView，还要设置Camera预览的surface缓冲区，以供底层获取的preview数据可以不断放入到surface缓冲区内。设置好以上参数后，就可以调用startPreview方法进行取景预览。startPreview()也是一层层往下调用，最后到达CameraService。相机应用--->Camera.java(框架)--->android_hardware_camera.cpp(JNI)--->Camera.cpp(客户端)--->CameraService.cpp(服务端)--->CameraHarwareInterface(HAL接口)。  
 ### HAL四个Callback
 Framework层与HAL层是通过回调进行通信的，CameraHardWareInterface.h定义了CameraServece和CameraHAL之间的接口，在这个头文件中定义了四个回调函数：
@@ -23,8 +23,9 @@ Framework层与HAL层是通过回调进行通信的，CameraHardWareInterface.h�
 4. camera_data_timestamp_callback: 用来从Camera HAL返回帧数据以及对应的时间戳，这个callback用在录像的场景。其中参数timestamp表示生产帧数据的时间戳，msg_type固定为CAMERA_MSG_VIDEO_FRAME(录像类型)，data指向帧数据地址。
 
 ### CameraService与Camera HAL通信过程
-client与server连接成功后就会new一个client返回，在client的构造函数中，对Camera设置了notifyCallback、dataCallBack、dataCallBackTimestamp三个回调函数，用于返回底层数据。preview方法调用后，CameraService在startPreviewMode方法中为Camera HAL指定一个预览窗口然后让Camera HAL调用startPreView(),HAL
+client与server连接成功后就会new一个client返回，在client的构造函数中，对Camera设置了notifyCallback、dataCallBack、dataCallBackTimestamp三个回调函数，用于返回底层数据。preview方法调用后，CameraService在startPreviewMode方法中为Camera HAL指定一个预览窗口然后让Camera HAL调用startPreView(),最后通过回调函数源源不断的将数据投递到surfaceview的缓冲区中。因为preview的数据是比较大的，所有数据不会携带着传到上层，而是直接在两个缓冲区之间copy，一个是底层采集数据的缓冲区，另一个是用于显示的surfaceview缓冲区。
 
+# 四、拍照
 
 # 透过现象看本质
 1. 打开相机为什么能看到预览影像？
