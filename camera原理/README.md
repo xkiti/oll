@@ -36,12 +36,7 @@ CamerHAL的startPreview主要完成三项任务，cameraPreviewConfig()、camera
 
 <img src="image/HAL_Driver.png"  width="80%" height="50%"/><br/>
 
-# 四、USB摄像头
-
 # 总结
+Camera
 
 
-<!-- # 透过现象看本质
-1. 打开相机为什么能看到预览影像？
-2. 相机应用调整参数是如何影响摄像头的？
-3. 按下拍照键的时候发生了什么？ -->
