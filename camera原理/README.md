@@ -37,6 +37,6 @@ CamerHAL的startPreview主要完成三项任务，cameraPreviewConfig()、camera
 <img src="image/HAL_Driver.png"  width="80%" height="50%"/><br/>
 
 # 总结
-Camera
+Camera架构符合C/S模型，App端通过Binder IPC与CameraService进行通信完成预览、拍照、录像等功能。在CamerService端，通过调用HAL提供的接口方法往HAL层传入回调方法，CameraHAL通过相关命令与驱动层进行数据通信，在相机硬件准备好数据的时候，驱动程序会返回相应的数据给CameraHAL，CameraHAL会将数据地址通过回调给到CameraService。最终由CamerService来决定数据是传到上层还是做其他处理。
 
 
