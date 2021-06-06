@@ -14,8 +14,17 @@ HAL层出现的意义在于向上提供了统一接口，针对不同硬件平�
 CameraService在系统启动时new了一个实例，以“media.camera”为名字注册到ServiceManager中。应用层的Cammear.java 调用open方法进入Native的世界，
 在ServiceManager中找到CameraService的Binder代理，调用CameraService的connect方法实例化HAL接口hardware，hardware调用initialize进入HAL层打开Camear驱动。CameraService::connet()返回client的时候，就表明客户端和服务端连接建立。相机完成初始化，可以进行拍照和preview等动作。一个看似简单的Camera初始化过程，经历了好几层的调用。java->JNI->Binder IPC->系统调用(open)
 # 三、相机Preview
-初始化Camera后开始预览取景preview。所有拥有拍照功能的应用，它在预览的时候都要实现SurfaceHolder.Callback接口，并实现其surfaceCreated、surfaceChanged、surfaceDestoryed三个函数。同时声明一个用于预览的窗口SurfaceView，还要设置Camera预览的surface缓冲区，以供底层获取的preview数据可以不断放入到surface缓冲区内。设置好以上参数后，就可以调用startPreview方法进行取景预览。startPreview()也是一层层往下调用，最后到达CameraService。相机应用--->Camera.java(框架)--->android_hardware_camera.cpp(JNI)--->Camera.cpp(客户端)--->CameraService.cpp(服务端)。  
-Framework层与HAL层是通过回调进行通信的，
+初始化Camera后开始预览取景preview。所有拥有拍照功能的应用，它在预览的时候都要实现SurfaceHolder.Callback接口，并实现其surfaceCreated、surfaceChanged、surfaceDestoryed三个函数。同时声明一个用于预览的窗口SurfaceView，还要设置Camera预览的surface缓冲区，以供底层获取的preview数据可以不断放入到surface缓冲区内。设置好以上参数后，就可以调用startPreview方法进行取景预览。startPreview()也是一层层往下调用，最后到达CameraService。相机应用--->Camera.java(框架)--->android_hardware_camera.cpp(JNI)--->Camera.cpp(客户端)--->CameraService.cpp(服务端)--->CameraHarwareInterface(HAL接口)。  
+### HAL四个Callback
+Framework层与HAL层是通过回调进行通信的，CameraHardWareInterface.h定义了CameraServece和CameraHAL之间的接口，在这个头文件中定义了四个回调函数：
+1. camera_request_memory: Camera HAL通知CameraService申请buffer，其中的参数buf_size指定了buf大小，num_bufs指定buf数目，
+2. camera_notify_callback: 用来传递一些消息：如快门消息、自动对焦完成消息、出错消息、拍照编码结束等
+3. camera_data_callback: 用于Camera HAL返回数据，返回的数据可以是preview的数据帧或者preview的元数据也可以是jpeg格式的帧数据。其中参数data指定返回的图像数据（指针地址），metadata指定返回图像的元数据（指针地址）。
+4. camera_data_timestamp_callback: 用来从Camera HAL返回帧数据以及对应的时间戳，这个callback用在录像的场景。其中参数timestamp表示生产帧数据的时间戳，msg_type固定为CAMERA_MSG_VIDEO_FRAME(录像类型)，data指向帧数据地址。
+
+### CameraService与Camera HAL通信过程
+client与server连接成功后就会new一个client返回，在client的构造函数中，对Camera设置了notifyCallback、dataCallBack、dataCallBackTimestamp三个回调函数，用于返回底层数据。preview方法调用后，CameraService在startPreviewMode方法中为Camera HAL指定一个预览窗口然后让Camera HAL调用startPreView(),HAL
+
 
 # 透过现象看本质
 1. 打开相机为什么能看到预览影像？
