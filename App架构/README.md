@@ -55,6 +55,16 @@
 # 三、整体架构
 <img src="imag/整体架构.png" width="80%" height="50%"  /><br/>
 ### MVP设计
+在研究了MVC、MVP、MVVM等优缺点后，我们发现MVP架构能解决现在所面临过的很多问题，于是我们学习并引入到了我们的项目中来。
+<img src="imag/整体架构.png" width="80%" height="50%"  /><br/>
+* View Layer: 只负责UI的绘制呈现，包含Fragment和一些自定义的UI组件，View层需要实现ViewInterface接口。Activity在项目中不再负责View的职责，仅仅是一个全局的控制者，负责创建View和Presenter的实例；
+* Model Layer: 负责检索、存储、操作数据，包括来自网络、数据库、磁盘文件和SharedPreferences的数据；
+* Presenter Layer: 作为View Layer和Module Layer的之间的纽带，它从model层中获取数据，然后调用View的接口去控制View；
+* Contract: 我们参照Google的demo加入契约类Contract来统一管理View和Presenter的接口，使得某一功能模块的接口能更加直观的呈现出来，这样做是有利于后期维护的。
+这套MVP架构还为我们带来了一个额外的好处：我们有了足够明确的开发规范和标准。细致到了每一个类应该放到哪个包下，哪个类具体应该负责什么职责等等。这对于我们的Code Review、接手他人的功能模块等都提供了极大的便利
+### MVP带来的新问题
+* 由于大量的业务逻辑处理转移到了Presenter层，在一些复杂的业务场景中Presenter同样会变得臃肿难懂。
+* 很多人忘记了对生命周期的管理，这很容易造成内存泄露。
 ### 组件化与模块化
  
 
