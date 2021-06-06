@@ -15,7 +15,7 @@ HAL层出现的意义在于向上提供了统一接口，针对不同硬件平�
 # 二、相机初始化
 CameraService在系统启动时new了一个实例，以“media.camera”为名字注册到ServiceManager中。应用层的Cammear.java 调用open方法进入Native的世界，
 在ServiceManager中找到CameraService的Binder代理，调用CameraService的connect方法实例化HAL接口hardware，hardware调用initialize进入HAL层打开Camear驱动。CameraService::connet()返回client的时候，就表明客户端和服务端连接建立。相机完成初始化，可以进行拍照和preview等动作。一个看似简单的Camera初始化过程，经历了好几层的调用。java->JNI->Binder IPC->系统调用(open)如下图：
-<img src="image/camera初始化.png" /><br/>
+<img src="image/camera初始化.png" width="80%" height="80%"  /><br/>
 # 三、相机预览
 初始化Camera后开始预览取景preview。所有拥有拍照功能的应用，它在预览的时候都要实现SurfaceHolder.Callback接口，并实现其surfaceCreated、surfaceChanged、surfaceDestoryed三个函数。同时声明一个用于预览的窗口SurfaceView，还要设置Camera预览的surface缓冲区，以供底层获取的preview数据可以不断放入到surface缓冲区内。设置好以上参数后，就可以调用startPreview方法进行取景预览。startPreview()也是一层层往下调用，最后到达CameraService。相机应用--->Camera.java(框架)--->android_hardware_camera.cpp(JNI)--->Camera.cpp(客户端)--->CameraService.cpp(服务端)--->CameraHarwareInterface(HAL接口)。  
 ### HAL四个Callback
@@ -35,6 +35,10 @@ CamerHAL的startPreview主要完成三项任务，cameraPreviewConfig()、camera
 3. 开启PreviewShowFrameThread和PreviewShowFrameThread：PreviewShowFrameThread通过DQBUF，从队列中取出一个buf数据(一帧数据)。如果相机硬件没有采集到图片，这个线程会在DQBUF过程中阻塞。PreviewShowFrameThread显示一帧数据，通过回调函数，将采集到的图像数据传回CameraService，再由CameraService传递给上层应用。（在预览过程中，CameraService会将数据copy一份到SurfaceFlinger，而不会往上层应用传递）。
 
 <img src="image/HAL_Driver.png"  width="80%" height="50%"/><br/>
+
+# 四、USB摄像头
+
+# 总结
 
 
 <!-- # 透过现象看本质
