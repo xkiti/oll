@@ -7,7 +7,7 @@
 2. 提供app控制设备、实时接收设备属性变化；
 3. 安全能力；
 
-### 物联网平台消息通信流程
+## 1.1 物联网平台消息通信流程
 	
 <img src="imag/android虚拟机.png" width="80%" height="50%" /><br/>
 #### 上行数据链路
@@ -17,14 +17,14 @@
 * ECS业务服务器调用基于HTTPS协议的API接口Pub，给Topic发送指令，将数据发送到物联网平台。
 * 物联网平台通过MQTT协议，使用Publish发送数据（指定Topic和Payload）到设备端。
 
-### 设备配网方式
+## 1.2 设备配网方式
 设备配网指的是将路由器的Wi-Fi SSID和PASSWORD通过某种方式传递到终端设备，让终端设备可以接入Wi-Fi网络的过程。
 对于无屏设备采用一建配网的方案，只需用户在App上输入Wi-Fi的密码即可。配网流程如下：
 ![Image](imag/一建配网.png)
 1. 手机通过广播发送Wi-Fi热点的SSID/密码信息。
 2. 设备通过监听方式获取，并连接上网。
 
-### 安全能力
+## 1.3 安全能力
 #### 物联网平台提供多重防护，有效保障设备和云端数据的安全。
 * ### 身份认证
 1. 提供芯片级安全存储方案（ID²）及设备密钥安全管理机制，防止设备密钥被破解。安全级别很高。
@@ -54,9 +54,10 @@
 
 # 三、整体架构
 <img src="imag/整体架构.png" width="80%" height="50%"  /><br/>
-### MVP设计
+## 3.1 MVP设计
 在研究了MVC、MVP、MVVM等优缺点后，我们发现MVP架构能解决现在所面临过的很多问题，于是我们学习并引入到了我们的项目中来。
-<img src="imag/mvp_c.png" width="80%" height="50%"  /><br/>
+  
+<img src="imag/mvp_c.png" width="70%" height="50%"  /><br/>
 * View Layer: 只负责UI的绘制呈现，包含Fragment和一些自定义的UI组件，View层需要实现ViewInterface接口。Activity在项目中不再负责View的职责，仅仅是一个全局的控制者，负责创建View和Presenter的实例；
 * Model Layer: 负责检索、存储、操作数据，包括来自网络、数据库、磁盘文件和SharedPreferences的数据；
 * Presenter Layer: 作为View Layer和Module Layer的之间的纽带，它从model层中获取数据，然后调用View的接口去控制View；
@@ -65,6 +66,6 @@
 ### MVP带来的新问题
 * 由于大量的业务逻辑处理转移到了Presenter层，在一些复杂的业务场景中Presenter同样会变得臃肿难懂。
 * 很多人忘记了对生命周期的管理，这很容易造成内存泄露。
-### 组件化与模块化
+## 3.2组件化与模块化
  
 
