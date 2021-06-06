@@ -56,7 +56,7 @@
 <img src="imag/整体架构.png" width="80%" height="50%"  /><br/>
 ### MVP设计
 在研究了MVC、MVP、MVVM等优缺点后，我们发现MVP架构能解决现在所面临过的很多问题，于是我们学习并引入到了我们的项目中来。
-<img src="imag/整体架构.png" width="80%" height="50%"  /><br/>
+<img src="imag/mvp_c.png" width="80%" height="50%"  /><br/>
 * View Layer: 只负责UI的绘制呈现，包含Fragment和一些自定义的UI组件，View层需要实现ViewInterface接口。Activity在项目中不再负责View的职责，仅仅是一个全局的控制者，负责创建View和Presenter的实例；
 * Model Layer: 负责检索、存储、操作数据，包括来自网络、数据库、磁盘文件和SharedPreferences的数据；
 * Presenter Layer: 作为View Layer和Module Layer的之间的纽带，它从model层中获取数据，然后调用View的接口去控制View；
