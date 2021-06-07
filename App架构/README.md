@@ -81,7 +81,7 @@
 * Contract: 我们参照Google的demo加入契约类Contract来统一管理View和Presenter的接口，使得某一功能模块的接口能更加直观的呈现出来，这样做是有利于后期维护的。 -->
 这套MVP架构还为我们带来了一个额外的好处：我们有了足够明确的开发规范和标准。细致到了每一个类应该放到哪个包下，哪个类具体应该负责什么职责等等。这对于我们的Code Review、接手他人的功能模块等都提供了极大的便利
 ### MVP问题的解决方案
-MVP存在的生命周期一致性问题指的是：Presenter的生命周期比View生命周期长，View的提前结束会导致内存泄漏。我们用可以在View生命周期结束后解绑Presenter，但这种情况下的粗暴解绑很容易造成空指针异常。为此我们让View实现了ViewInterface，Presenter不再持有View的实例而是持有ViewInterface的动态代理对象，这样Presenter在更新View之前就拥有了拦截的机会。
+MVP存在的生命周期一致性问题指的是：Presenter的生命周期比View生命周期长，View的提前结束会导致内存泄漏。我们用可以在View生命周期结束后解绑Presenter，但这种情况下的粗暴解绑很容易造成空指针异常。为此我们让View实现了ViewInterface，Presenter不再持有View的实例而是持有ViewInterface的动态代理对象，这样Presenter在更新View之前就拥有了拦截的机会，也就解决了问题。
 ## 3.2组件化与模块化
 基础组件与业务无关且相对独立，可以复用避免重复造轮子。模块化更多的是考虑到并行开发和测试效率。智家App的模块化设计图如下：
   
@@ -104,6 +104,11 @@ if(isBuildModule.toBoolean()){
     apply plugin: 'com.android.library'
 }
 ```
+# 世面上其他App架构的优缺点
+这边我简单的把市面上的App架构归结为两种:超级App架构、单一App架构。
+### 超级App架构
+
+这边我简单的把市面上的App架构归结为两种:超级App架构、单一App架构。
 # 结尾
 以上就是我对于智家App架构的整理，有很多不足，但也让我得到了成长。感恩！
  
