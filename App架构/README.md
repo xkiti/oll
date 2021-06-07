@@ -67,17 +67,21 @@
 先看看看看模块化的整体设计图  
 <img src="imag/整体架构.png" width="80%" height="50%"  /><br/>
 ## 3.1 MVP设计
-在研究了MVC、MVP、MVVM等优缺点后，我们发现MVP架构能解决现在所面临过的很多问题，于是我们学习并引入到了我们的项目中来。
-  
+先来看一下MVC、MVP、MVVM大概的优缺点：
+|  | MVC |MVP|MVVM|
+| ----- | ----- |-----|-----|
+| 优点 | 开发速度快|方便测试、View和Model之间解耦|数据驱动view的更新，低耦合|
+| 缺点 | 业务复杂的时候严重影响迭代速度 |View和Present相互持有，存在生命周期一致性问题、业务复杂会造成Present臃肿|数据绑定导致出现Bug不好定位 |
+ 
+由图表可以看出在Android框架设计中，MVC更适合页面逻辑简单，业务相对稳定的应用。MVVM最大的特点是数据驱动，数据的变化直接体现在View上减少了被引用的情况，碍于当时Android的开发环境对数据绑定的支持有限，而且对于数据绑定的bug没有很好的处理方案。从项目现在和未来的规划中，我们否认了MVC的架构方式，由于MVVM当时的不成熟放弃了MVVM。项目的业务会越来越复杂，但是只要保证业务逻辑和页面逻辑相互隔离不混乱，带来的代码臃肿还是能接受的，针对存在的生命周期一致性问题，解决方案很成熟而且实现简单。从这两点来看MVP符合当下以及将来的项目情况。为此我们设计实现了如下图的MVP架构：
 <img src="imag/mvp_c.png" width="70%" height="50%"  /><br/>
-* View Layer: 只负责UI的绘制呈现，包含Fragment和一些自定义的UI组件，View层需要实现ViewInterface接口。Activity在项目中不再负责View的职责，仅仅是一个全局的控制者，负责创建View和Presenter的实例；
+<!-- * View Layer: 只负责UI的绘制呈现，包含Fragment和一些自定义的UI组件，View层需要实现ViewInterface接口。Activity在项目中不再负责View的职责，仅仅是一个全局的控制者，负责创建View和Presenter的实例；
 * Model Layer: 负责检索、存储、操作数据，包括来自网络、数据库、磁盘文件和SharedPreferences的数据；
 * Presenter Layer: 作为View Layer和Module Layer的之间的纽带，它从model层中获取数据，然后调用View的接口去控制View；
-* Contract: 我们参照Google的demo加入契约类Contract来统一管理View和Presenter的接口，使得某一功能模块的接口能更加直观的呈现出来，这样做是有利于后期维护的。
+* Contract: 我们参照Google的demo加入契约类Contract来统一管理View和Presenter的接口，使得某一功能模块的接口能更加直观的呈现出来，这样做是有利于后期维护的。 -->
 这套MVP架构还为我们带来了一个额外的好处：我们有了足够明确的开发规范和标准。细致到了每一个类应该放到哪个包下，哪个类具体应该负责什么职责等等。这对于我们的Code Review、接手他人的功能模块等都提供了极大的便利
-### MVP带来的新问题
-* 由于大量的业务逻辑处理转移到了Presenter层，在一些复杂的业务场景中Presenter同样会变得臃肿难懂。
-* 很多人忘记了对生命周期的管理，这很容易造成内存泄露。
+### MVP问题的解决方案
+MVP存在的生命周期一致性问题指的是：Presenter的生命周期比View生命周期长，View的提前结束会导致内存泄漏。我们用可以在View生命周期结束后解绑Presenter，但这种情况下的粗暴解绑很容易造成空指针异常。为此我们让View实现了ViewInterface，Presenter不再持有View的实例而是持有ViewInterface的动态代理对象，这样Presenter在更新View之前就拥有了拦截的机会。
 ## 3.2组件化与模块化
 基础组件与业务无关且相对独立，可以复用避免重复造轮子。模块化更多的是考虑到并行开发和测试效率。智家App的模块化设计图如下：
   
