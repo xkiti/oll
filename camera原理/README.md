@@ -37,7 +37,7 @@ CamerHAL的startPreview主要完成三项任务，cameraPreviewConfig()、camera
 <img src="image/HAL_Driver.png"  width="80%" height="50%"/><br/>
 
 # 四、外接USB摄像头
-Android平台支持使用即插即用的USB摄像头（即网络摄像头），但前提是这些摄像头采用标准的UVC协议。UVC是属于USB行业规范中的USB设备类规范，在这边的意思就是规范了网络摄像头的数据交换方式，Android平台提供了UVC协议的实现，所以针对USB摄像头不需要安装驱动。微信支付的业务90%会接触到USB摄像头，因此这块需要重点学习。
+Android平台支持使用即插即用的USB摄像头（即网络摄像头），但前提是这些摄像头采用标准的UVC协议。UVC是属于USB行业规范中的USB设备类规范，在这边的意思就是规范了网络摄像头的数据交换方式，Android平台提供了UVC协议的实现，所以针对USB摄像头不需要安装驱动。微信支付的业务90%会接触到USB摄像头，因此这块需要重点学习。  
 [需要注意的是Android10使用USB摄像头会出现bug](https://issuetracker.google.com/issues/139087809)
 
 # 总结
