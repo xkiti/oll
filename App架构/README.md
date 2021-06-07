@@ -100,6 +100,7 @@ if(isBuildModule.toBoolean()){
     apply plugin: 'com.android.library'
 }
 ```
-
+# 结尾
+以上就是我对于智家App架构的整理，有很多不足，但也让我得到了成长。感恩！
  
 
