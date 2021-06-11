@@ -4,8 +4,6 @@
 
 <img src="imag/整体架构.png" alt="整体架构" style="zoom:80%;" />
 
-
-
 # 一、应用层
 
 应用层处于整个框架的最上层，以相机应用呈现给用户。用户通过应用满足需求，而应用的功能实现需要调用一系列的Camera Api接口，具体的接口实现放在了Camera Framework中来完成。
@@ -190,7 +188,7 @@ deleteStream/createStream 分别是用于删除之前的数据流以及为新的
 
 HAL基本结构hw_module_t，hw_device_t只有open和close方法很难满足Camera这样复杂的设备。因此谷歌通过将这两个基本结构嵌入到更大的结构体内部，同时在更大的结构内部定义了各自模块特有的方法，扩展了HAL接口。运用该方法针对Camera提出了HAL3接口。HAL3接口包括了用于代表一系列操作主体的结构体以及具体操作函数，接下来我们分别进行详细介绍：
 
-### 3.2 核心结构体解析
+#### 3.1.1 核心结构体解析
 
 #### camera_module_t以及camera3_device_t
 
@@ -262,7 +260,7 @@ typedef struct camera3_stream_buffer {
 } camera3_stream_buffer_t;
 ```
 
-#### 3.3 核心接口函数解析
+#### 3.1.2 核心接口函数解析
 
 HAL3的核心接口都是在camera3_device_ops中被定义，该结构体定义了一系列的函数指针，用来指向平台厂商实际的实现方法，接下来就其中几个方法简单介绍下：
 
@@ -305,7 +303,7 @@ typedef struct camera3_device_ops {
 
 当上层需要执行新的configure_streams的时候，需要调用该方法去尽可能快地清除掉当前已经在处理中的或者即将处理的任务，为配置数据流提供一个相对稳定的环境，flush会在所有的buffer都得以释放，所有request都成功返回后才真正返回。
 
-### 3.4 回调函数
+### 3.1.3 回调函数
 
 上面的一系列方法是上层直接对下控制Camera Hal，而一旦Camera Hal产生了数据或者事件的时候，可以通过camera3_callback_ops中定义的回调方法将数据或者事件返回至上层，该结构体定义如下：
 
@@ -335,13 +333,13 @@ void (*return_stream_buffers)( const struct camera3_callback_ops *, uint32_t num
 
 该方法用于异步返回HAL事件到上层，必须非阻塞实现。
 
-### 2.Camera Provider
+### 3.2 Camera Provider
 
 Android8.0Treble项目中，加入了Camera Provider这一抽象层，该层作为一个独立进程存在于整个系统中，并且通过HIDL成功地将Camera Hal Module从Camera Service中解耦出来，承担起了对Camera HAL的封装工作。在相机架构中，Camera Provider处于Camera Service和硬件抽象层之间。Camera Service通过HIDL请求Camera Provider，Camera Provider调用HAL3接口去控制相机。
 
 ![Camera_Provider](imag/Camera_Provider.png)
 
-#### 2.1Camera HIDL 接口
+#### 3.2.1 Camera HIDL 接口
 
 HIDL(接口定义语言)，其核心是接口的定义，而谷歌为了使开发者将注意力落在接口的定义上而不是机制的实现上，主动封装了HIDL机制的实现细节，开发者只需要通过*.hal文件定义接口，填充接口内部实际的实现即可，接下来来看下具体定义的几个主要接口：
 
@@ -384,7 +382,7 @@ HIDL(接口定义语言)，其核心是接口的定义，而谷歌为了使开�
 > processCaptureRequest_3_4：下发request到Provider中，一个request对应着一次图像需求。
 > close: 关闭当前会话。
 
-### 2.2Camera Provider 主程序
+### 3.2.2 Camera Provider 主程序
 
 接下来进入到Provider内部去看看，整个进程是如何运转的，以下图为例进行分析:
 
