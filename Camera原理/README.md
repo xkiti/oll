@@ -1,10 +1,10 @@
 ### 目录
 * [背景](https://github.com/xkiti/oll/tree/main/Camera%E5%8E%9F%E7%90%86#背景)
 * [安卓相机架构概览](https://github.com/xkiti/oll/tree/main/Camera%E5%8E%9F%E7%90%86#安卓相机架构概览)
-* [应用层](https://github.com/xkiti/oll/tree/main/Camera%E5%8E%9F%E7%90%86#应用层)
-* [服务层](https://github.com/xkiti/oll/tree/main/Camera%E5%8E%9F%E7%90%86#服务层)
-* [硬件抽象层](https://github.com/xkiti/oll/tree/main/Camera%E5%8E%9F%E7%90%86#硬件抽象层)
-* [驱动层](https://github.com/xkiti/oll/tree/main/Camera%E5%8E%9F%E7%90%86#驱动层)
+* [应用层](https://github.com/xkiti/oll/tree/main/Camera%E5%8E%9F%E7%90%86#一应用层)
+* [服务层](https://github.com/xkiti/oll/tree/main/Camera%E5%8E%9F%E7%90%86#二服务层)
+* [硬件抽象层](https://github.com/xkiti/oll/tree/main/Camera%E5%8E%9F%E7%90%86#三硬件抽象层)
+* [驱动层](https://github.com/xkiti/oll/tree/main/Camera%E5%8E%9F%E7%90%86#五相机驱动层–V4L2框架)
 # 背景
 # 安卓相机架构概览
 安卓相机架构采用分层思想，下面的相机整体架构图很清晰地显示出了五层架构以及相互的关联接口：
