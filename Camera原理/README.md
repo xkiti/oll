@@ -344,7 +344,7 @@ void (*return_stream_buffers)( const struct camera3_callback_ops *, uint32_t num
 
 Android8.0Treble项目中，加入了Camera Provider这一抽象层，该层作为一个独立进程存在于整个系统中，并且通过HIDL成功地将Camera Hal Module从Camera Service中解耦出来，承担起了对Camera HAL的封装工作。在相机架构中，Camera Provider处于Camera Service和硬件抽象层之间。Camera Service通过HIDL请求Camera Provider，Camera Provider调用HAL3接口去控制相机。
 
-<img src="imag/Camera_Provider.png" alt="Camera_Provider" style="zoom:50%;" />
+<img src="imag/Camera_Provider.png" alt="Camera_Provider" width="50%" height="50%" align="center"/>
 
 #### 3.2.1 Camera HIDL 接口
 
