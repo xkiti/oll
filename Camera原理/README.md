@@ -2,7 +2,7 @@
 # 安卓相机架构概览
 安卓相机架构采用分层思想，下面的相机整体架构图很清晰地显示出了五层架构以及相互的关联接口：
 
-<img src="imag/整体架构.png" alt="整体架构" style="zoom:80%;" />
+<img src="imag/整体架构.png" alt="整体架构" width="50%" height="50%" />
 
 # 一、应用层
 
@@ -337,13 +337,13 @@ void (*return_stream_buffers)( const struct camera3_callback_ops *, uint32_t num
 
 Android8.0Treble项目中，加入了Camera Provider这一抽象层，该层作为一个独立进程存在于整个系统中，并且通过HIDL成功地将Camera Hal Module从Camera Service中解耦出来，承担起了对Camera HAL的封装工作。在相机架构中，Camera Provider处于Camera Service和硬件抽象层之间。Camera Service通过HIDL请求Camera Provider，Camera Provider调用HAL3接口去控制相机。
 
-![Camera_Provider](imag/Camera_Provider.png)
+![Camera_Provider](imag/Camera_Provider.png width="50%" height="50%")
 
 #### 3.2.1 Camera HIDL 接口
 
 HIDL(接口定义语言)，其核心是接口的定义，而谷歌为了使开发者将注意力落在接口的定义上而不是机制的实现上，主动封装了HIDL机制的实现细节，开发者只需要通过*.hal文件定义接口，填充接口内部实际的实现即可，接下来来看下具体定义的几个主要接口：
 
-![hal_define](imag/hal_define.png style="zoom:50%;")
+![hal_define](imag/hal_define.png width="50%" height="50%")
 
 #### ICameraProvider.hal
 
@@ -395,7 +395,7 @@ HIDL(接口定义语言)，其核心是接口的定义，而谷歌为了使开�
 
 接下来以上图为例简单介绍下Provider中几个重要流程：
 
-<img src="imag/camera_provider_简单流程.png" alt="camera_provider_简单流程" style="zoom:50%;" />
+<img src="imag/camera_provider_简单流程.png" alt="camera_provider_简单流程" width="50%" height="50%" />
 
 * Camera Service请求相机信息：通过调用ICameraProvider接口获取ICameraDevice。在此过程中，Provider会去实例化一个CameraDevice对象，并且将之前存有camera_modult_t结构体的CameraModule对象传入CameraDevice中，这样就可以在CameraDevice内部通过CameraModule访问到camera_module_t的相关资源，然后将CameraDevice内部类TrampolineDeviceInterface_3_2（该类继承并实现了ICameraDevice接口）返回给Camera Service。
 
@@ -415,7 +415,7 @@ HIDL(接口定义语言)，其核心是接口的定义，而谷歌为了使开�
 
 以下是设备间的拓扑图：
 
-![v4l2拓扑图](imag/v4l2拓扑图.png)
+![v4l2拓扑图](imag/v4l2拓扑图.png width="50%" height="50%")
 
 从上图不难看出，v4l2_device作为顶层管理者，一方面通过嵌入到一个video_device中，暴露video设备节点给用户空间进行控制，另一方面，video_device内部会创建一个media_entity作为在media controller中的抽象体，被加入到media_device中的entitie链表中，此外，为了保持对所从属子设备的控制，内部还维护了一个挂载了所有子设备的subdevs链表。而对于其中每一个子设备而言，统一采用了v4l2_subdev结构体来进行描述，一方面通过嵌入到video_device，暴露v4l2_subdev子设备节点给用户空间进行控制，另一方面其内部也维护着在media controller中的对应的一个media_entity抽象体，而该抽象体也会链入到media_device中的entities链表中。通过加入entities链表的方式，media_device保持了对所有的设备信息的查询和控制的能力，而该能力会通过media controller框架在用户空间创建meida设备节点，将这种能力暴露给用户进行控制。
 
@@ -425,7 +425,7 @@ HIDL(接口定义语言)，其核心是接口的定义，而谷歌为了使开�
 
 整个对于v4l2的操作主要包含了如下几个主要流程：
 
-<img src="imag/v4l2的操作流程.png" alt="v4l2的操作流程" style="zoom:80%;" />
+<img src="imag/v4l2的操作流程.png" alt="v4l2的操作流程" width="50%" height="50%" />
 
 在操作之前，还有一个准备工作需要做，那就是需要找到哪些是我们所需要的设备，而它的设备节点是什么，此时便可以通过打开media设备节点，并且通过ioctl注入MEDIA_IOC_ENUM_ENTITIES参数来获取v4l2_device下的video设备节点，该操作会调用到内核中的media_device_ioctl方法，而之后根据传入的命令，进而调用到media_device_enum_entities方法来枚举所有的设备。
 
