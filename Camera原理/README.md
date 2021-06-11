@@ -344,13 +344,13 @@ void (*return_stream_buffers)( const struct camera3_callback_ops *, uint32_t num
 
 Android8.0Treble项目中，加入了Camera Provider这一抽象层，该层作为一个独立进程存在于整个系统中，并且通过HIDL成功地将Camera Hal Module从Camera Service中解耦出来，承担起了对Camera HAL的封装工作。在相机架构中，Camera Provider处于Camera Service和硬件抽象层之间。Camera Service通过HIDL请求Camera Provider，Camera Provider调用HAL3接口去控制相机。
 
-![Camera_Provider](imag/Camera_Provider.png width="50%" height="50%")
+<img src="imag/Camera_Provider.png" alt="Camera_Provider" style="zoom:50%;" />
 
 #### 3.2.1 Camera HIDL 接口
 
 HIDL(接口定义语言)，其核心是接口的定义，而谷歌为了使开发者将注意力落在接口的定义上而不是机制的实现上，主动封装了HIDL机制的实现细节，开发者只需要通过*.hal文件定义接口，填充接口内部实际的实现即可，接下来来看下具体定义的几个主要接口：
 
-![hal_define](imag/hal_define.png width="50%" height="50%")
+<img src="imag/hal_define.png" alt="hal_define" style="zoom:50%;" />
 
 #### ICameraProvider.hal
 
@@ -402,7 +402,7 @@ HIDL(接口定义语言)，其核心是接口的定义，而谷歌为了使开�
 
 接下来以上图为例简单介绍下Provider中几个重要流程：
 
-<img src="imag/camera_provider_简单流程.png" alt="camera_provider_简单流程" width="50%" height="50%" />
+<img src="imag/camera_provider_简单流程.png" alt="camera_provider_简单流程"  />
 
 * Camera Service请求相机信息：通过调用ICameraProvider接口获取ICameraDevice。在此过程中，Provider会去实例化一个CameraDevice对象，并且将之前存有camera_modult_t结构体的CameraModule对象传入CameraDevice中，这样就可以在CameraDevice内部通过CameraModule访问到camera_module_t的相关资源，然后将CameraDevice内部类TrampolineDeviceInterface_3_2（该类继承并实现了ICameraDevice接口）返回给Camera Service。
 
