@@ -343,7 +343,7 @@ Android8.0Treble项目中，加入了Camera Provider这一抽象层，该层作�
 
 HIDL(接口定义语言)，其核心是接口的定义，而谷歌为了使开发者将注意力落在接口的定义上而不是机制的实现上，主动封装了HIDL机制的实现细节，开发者只需要通过*.hal文件定义接口，填充接口内部实际的实现即可，接下来来看下具体定义的几个主要接口：
 
-![hal_define](imag/hal_define.png)
+![hal_define](imag/hal_define.png style="zoom:50%;")
 
 #### ICameraProvider.hal
 
