@@ -11,7 +11,7 @@
 | 缺点 | Activity并不是一个标准的MVC模式中的Controller，随着界面及其逻辑的复杂度不断提升，Activity类的职责不断增加，以致变得庞大臃肿，难以维护 | View和Present相互持有，存在生命周期一致性问题、业务复杂会造成Present臃肿 | Android是通过databinding来实现View和数据之间的绑定，databinding作为新出的框架，还不太成熟。 |
 
 从项目现在和未来的规划中，我们否认了MVC的架构方式，由于MVVM当时的不成熟放弃了MVVM。项目的业务会越来越复杂，但是只要保证业务逻辑和页面逻辑相互隔离不混乱，带来的代码臃肿还是能接受的，针对存在的生命周期一致性问题，解决方案很成熟而且实现简单。从这两点来看MVP符合当下以及将来的项目情况。为此我们设计实现了如下图的MVP架构：
-<img src="imag/mvp_c.png" width="70%" height="50%"  /><br/>
+<img src="imag/mvp_c.png" width="50%" height="50%"  /><br/>
 这套MVP架构还为我们带来了一个额外的好处：我们有了足够明确的开发规范和标准。细致到了每一个类应该放到哪个包下，哪个类具体应该负责什么职责等等。这对于我们的Code Review、接手他人的功能模块等都提供了极大的便利
 
 ### MVP问题的解决方案
@@ -19,6 +19,7 @@
 MVP存在的生命周期一致性问题指的是：Presenter的生命周期比View生命周期长，View的提前结束会导致内存泄漏。我们用可以在View生命周期结束后解绑Presenter，但这种情况下的粗暴解绑很容易造成空指针异常。为此我们让View实现了ViewInterface，Presenter不再持有View的实例而是持有ViewInterface的动态代理对象，这样Presenter在更新View之前就拥有了拦截的机会，也就解决了问题。
 
 ### 2、多进程
+ <img src="imag/mvp2.png" width="50%" height="50%" /><br/>
 
 Android系统分配给进程的资源是有限的，当进程占用的资源达到阈值会触发lmk杀掉优先级低的组件。推送和物联模块长连接作为后台服务，在系统资源紧张的时候容易被杀掉。为了解决这个问题，我们根据轻重进程分离的思想将推送和物联模块放在(:push)进程中。又因为webview本身的不稳定和内存泄漏问题，我们将它独立到:tool进程中去。
 
@@ -52,7 +53,7 @@ Android系统分配给进程的资源是有限的，当进程占用的资源达�
 
 E(Excalibur)M(Modules)C(Common)。
 
-<img src="imag/EMC.png" width="70%" height="50%"  /><br/>
+<img src="imag/EMC.png" width="50%" height="50%"  /><br/>
 
 每个业务模块对外提供相应的业务接口，同时在系统启动的时候向Excalibur系统注册自己模块的Scheme（Excalibur是饿了么移动用来保存Scheme与模块之间映射的系统，同时能根据Scheme进行Class反射返回）。 当其他业务模块对该业务模块有依赖时，从Excalibur系统中获取相关实例，并调用相应接口来实现调用，从而实现了业务模块之间的解耦目的。
 
@@ -73,7 +74,7 @@ E(Excalibur)M(Modules)C(Common)。
 # 四、整体架构
 先看看看看模块化的整体设计图  
 <img src="imag/整体架构.png" width="80%" height="50%"  /><br/>
-## 3.1组件化与模块化
+## 组件化与模块化
 基础组件与业务无关且相对独立，可以复用避免重复造轮子。模块化更多的是考虑到并行开发和测试效率。智家App的模块化设计图如下：
   
 <img src="imag/all_arc.png" width="70%" height="50%"  /><br/>
@@ -95,8 +96,8 @@ if(isBuildModule.toBoolean()){
     apply plugin: 'com.android.library'
 }
 ```
-### 3.2路由架构
 
+# 五、架构的未来优化思路与方向 
 # 结尾
 以上就是我对于智家App架构的整理，以及对App架构的一些粗浅看法，有很多不足，但也让我得到了成长。感恩！
  
