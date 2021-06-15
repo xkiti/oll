@@ -84,11 +84,28 @@ AIDL是谷歌设计的一种自定义语言，用来方便、快速地实现Bind
 
 ### 2.2 Camera Service 主程序
 
-CameraService 主程序，随着系统启动而运行。主要目的是向外暴露AIDL接口，同时通过调用Camera Provider的HIDL接口，建立与Provider的通信。同时在内部维护了从Framework以及Provider获取到的资源，并且按照一定的框架结构保持整个Service在稳定高效的状态下运行，所以接下来我们主要通过几个关键类、初始化过程以及处理来自App的请求三个部分来详细介绍下。
+介绍Camera Service之前，先简单介绍下Camera Provider。它和Camera Service一样也是独立服务进程，是硬件抽象层的提供者，通过HIDL接口向其他进程提供硬件抽象层功能。Camera Service主程序随着系统启动而运行，启动阶段通过HIDL接口建立与Provider之间的通信。在服务阶段主要是提供一个桥梁，将来自Framework的请求经过转化处理交由Provider实现，同时在内部维护了从Framework以及Provider获取到的资源，按照一定的框架结构保持整个Service在稳定高效的状态下运行。所以接下来我们主要通过几个关键类、初始化过程以及处理来自App的请求三个部分来详细介绍下。
 
 #### 关键类解析
 
 ![CameraService关键类](imag/CameraService%E5%85%B3%E9%94%AE%E7%B1%BB.png?lastModify=1623414222)
+
+CameraService、DeviceInfo、ProviderInfo、CameraProviderManager及其内部类属于“静态”的，在Camera Service成功启动后就初始化完成，相当于资源，在服务内部使用。详细介绍如下：
+
+* CameraService：实现了AIDL中ICameraService 接口，并且暴露给Camera Framework进行调用。持有CameraProviderManager实例。
+* CameraProviderManager：Camera Provider管理者。内部的ProviderInfo列表代表着系统中的所有Camera Provider。
+
+* ProviderInfo：内部维护一个Camera Provider代理，同时实现了Camera Provider端的ICameraProviderCallback接口，能接收来自Provider的事件回调。
+* DeviceInfo3：内部维护着Camera Provider中的设备代理(ICameraDevice)，保持了对Camera Provider的控制。
+
+CameraDeviceClient及其内部类是“动态”的，一次打开设备的操作就会实例化一次，关闭设备就会销毁回收。详细介绍如下：
+
+* CameraDeviceClient：实现了ICameraDeviceUser接口，在相机打开过程中与Camera Framework形成了双向道路。其中内部包含了一个Camera3Device对象和FrameProcessorBase对象。
+* Camera3Device：实现了Camera Provider端的ICameraDeviceCallbacks接口，通过该接口接收来自Provider的结果上传，进而传给CameraDeviceClient以及FrameProcessBase。
+  * 将事件通过notify方法给到CameraDeviceClient。
+  * meta data以及image data 会先到FrameProcessBase，然后给到CameraDeviceClient。
+* FrameProcessorBase：主要用于metadata以及image data的中转处理。
+* RequestThread：Camera3Device的内部线程对象，主要用于处理Request的接收与下发工作。
 
 #### 启动初始化
 
@@ -96,24 +113,18 @@ CameraService 主程序，随着系统启动而运行。主要目的是向外暴
 
 ![camera_service_start](imag/camera_service_start.png)
 
-当系统启动的时候会运行main_cameraserver程序，紧接着调用了CameraService的instantiate方法，该方法最终会调用到CameraService的onFirstRef方法，在这个方法里面便开始了整个CameraService的初始化工作。 
-而在onFirstRef方法内又调用了enumerateProviders方法，该方法中主要做了两个工作：
+当系统启动的时候会运行cameraserver程序， 在main方法中先初始化CameraService，最后将CameraService加入到service_manager中。在服务初始化的时候主要是实创建并初始化CameraProviderManager对象。而在CameraProviderManager初始化的过程中，主要做了三件事：
 
-* 一个是实例化一个CameraProviderManager对象，该对象管理着有关Camera Provider的一些资源。 
-* 一个是调用CameraProviderManager的initialize方法对其进行初始化工作。
-
-而在CameraProviderManager初始化的过程中，主要做了三件事：
-
-* 首先通过getService方法获取ICameraProvider代理。
-*  随后实例化了一个ProviderInfo对象，之后调用其initialize方法进行初始化。
+* 首先通过service_manager获取CameraProvider服务代理。
+*  随后实例化了一个ProviderInfo对象，并对其进行初始化。
 *  最后将ProviderInfo加入到一个内部容器中进行管理。
 
-而在调用ProviderInfo的initialize方法进行初始化过程中存在如下几个动作：
+而在ProviderInfo初始化过程中做了四件事：
 
-* 首先接收了来自CameraProviderManager获取的ICameraProvider代理并将其存入内部成员变量中。
-*  其次由于ProviderInfo实现了ICameraProviderCallback接口，所以紧接着调用了ICameraProvider的setCallback将自身注册到Camera Provider中，接收来自Provider的事件回调。
-* 再然后，通过调用ICameraProvider代理的getCameraDeviceInterface_V3_X接口，获取Provider端的ICameraDevice代理，并且将这个代理作为参数加入到DeviceInfo3对象实例化方法中，而在实例化DeviceInfo3对象的过程中会通过ICameraDevice代理的getCameraCharacteristics方法获取该设备对应的属性配置，并且保存在内部成员变量中。
-*  最后ProviderInfo会将每一个DeviceInfo3存入内部的一个容器中进行统一管理，至此整个初始化的工作已经完成。
+*  首先将自身注册到Camera Provider中，接收来自Provider的事件回调。
+* 其次通过CameraProvider服务代理获取Provider端的设备代理对象。
+* 再然后通过设备代理对象获取该设备对应的属性配置，创建DeviceInfo3对象，并且属性配置保存在DeviceInfo3对象中。
+*  最后ProviderInfo会将每一个DeviceInfo3存入内部的一个容器中进行统一管理。
 
 通过以上的系列动作，Camera Service进程便运行起来了，获取了Camera Provider的代理，同时也将自身关于Camera Provider的回调注册到了Provider中，这就建立了与Provider的通讯，另一边，通过服务的形式将AIDL接口也暴露给了Framework，静静等待来自  Framework的请求。
 
@@ -127,52 +138,47 @@ CameraService 主程序，随着系统启动而运行。主要目的是向外暴
 
 #### 打开相机设备 
 
-对于打开相机设备动作，主要由connectDevice来实现，内部实现比较复杂，接下来我们详细梳理下。 当CameraFramework通过调用ICameraService的connectDevice接口的时候，主要做了两件事情：
+对于打开相机设备动作，内部实现比较复杂，接下来我们简单梳理下。 当Camera Framework调用ICameraService的connectDevice方法的时候就开始了打开相机动作。connectDevice方法主要做了两件事情：
 
-* 一个是创建CameraDeviceClient。
-*  一个是对CameraDeviceClient进行初始化，并将其给Framework。
+* 实例CameraDeviceClient对象，并将connectDevice方法传入的回调接口保存在其属性变量中，同时创建了Camera3Device对象。
+*  对CameraDeviceClient进行初始化，初始化完成后，通过保存的回调接口将自己传给Camera Framework，与之形成双向通信。
 
-而其中创建CameraDevcieClient的工作是通过makeClient方法来实现的，在该方法中首先实例化一个CameraDeviceClient，并且将来自Framework针对ICameraDeviceCallbacks的实现类CameraDeviceImpl.CameraDeviceCallbacks存入CameraDeviceClient中，这样一旦有结果产生便可以将结果通过这个回调回传给Framework，其次还实例化了一个Camera3Device对象。
+在对CameraDeviceClient初始化的过程中主要做了两件事：
 
-其中的CameraDeviceClient的初始化工作是通过调用其initialize方法来完成的，在该方法中：
+* 对Camera3Device进行初始化：通过HIDL接口请求Camera Provider打开相机，并将返回的设备会话代理(ICameraDeviceSession)放入到Camera3Device对象中，最后启动Camera3Device对象中的RequestThread线程等待Request的下发
+* 实例化FrameProcessorBase对象并且Camera3Device对象传入其中，这样就建立了FrameProcessorBase和Camera3Device的联系，之后将FrameProcessorBase内部线程运行起来，等待来自Camera3Device的结果。最后将CameraDeviceClient注册到FrameProcessorBase内部，建立FrameProcessorBase与CameraDeviceClient的联系。
 
-* 首先调用父类Camera2ClientBase的initialize方法进行初始化。
-*  其次实例化FrameProcessorBase对象并且将内部的Camera3Device对象传入其中，这样就建立了FrameProcessorBase和Camera3Device的联系，之后将内部线程运行起来，等待来自Camera3Device的结果。 
-* 最后将CameraDeviceClient注册到FrameProcessorBase内部，这样就建立了与CameraDeviceClient的联系。
-
-而在Camera2ClientBase的intialize方法中会调用Camera3Device的intialize方法对其进行初始化工作，并且通过调用Camera3Device的setNotifyCallback方法将自身注册到Camera3Device内部，这样一旦Camera3Device有结果产生就可以发送到CameraDeviceClient中。
-
-而在Camera3Device的初始化过程中，首先通过调用CameraProviderManager的openSession方法打开并获取一个Provider中的ICameraDeviceSession代理，其次实例化一个HalInterface对象，将之前获取的ICameraDeviceSession代理存入其中，最后将RequestThread线程运行起来，等待Request的下发。
-
-而对于CameraProviderManager的openSession方法，它会通过内部的DeviceInfo保存的ICameraDevice代理，调用其open方法从Camera Provider中打开并获取一个ICameraDeviceSession远程代理，并且由于Camera3Device实现了Provider中ICameraDeviceCallback方法，会通过该open方法传入到Provider中，接收来自Provider的结果回传。
-
-至此，整个connectDevice方法已经运行完毕，此时App已经获取了一个Camera设备，紧接着，由于需要采集图像，所以需要再次调用CameraDevice的createCaptureSession操作，到达Framework，再通过ICameraDeviceUser代理进行了一系列操作，分别包含了cancelRequest/beginConfigure/deleteStream/createStream以及endConfigure方法来进行数据流的配置。
+connectDevice方法运行完毕，此时App已经获取了一个Camera设备(CameraDevice)，可以进行下一步的操作了。
 
 #### 配置数据流 
 
-其中cancelRequest逻辑比较简单，对应的方法是CameraDeviceClient的cancelRequest方法，在该方法中会去通知Camera3Device将RequestThread中的Request队列清空，停止Request的继续下发。
+配置数据流过程可以看做是一个事务，从startConfigure开始中间经历过deleteStream、createStream、cancelRequest 最后由endConfigure触发配置。
 
-deleteStream/createStream 分别是用于删除之前的数据流以及为新的操作创建数据流。
+* startConfigure：空实现。
+* cancelRequest：在该方法中会去通知Camera3Device将RequestThread中的Request队列清空，停止Request的继续下发。
+* deleteStream：删除之前的数据流。
+* createStream：为新的操作创建数据流。
+* endConfigure：在该方法中会调用Camera3Device的configureStreams的方法，而该方法又会去通过ICameraDeviceSession的configureStreams_3_4的方法最终将需求传递给Provide；
 
-紧接着调用位于整个调用流程的末尾–endConfigure方法，该方法对应着CameraDeviceClient的endConfigure方法，其逻辑比较简单，在该方法中会调用Camera3Device的configureStreams的方法，而该方法又会去通过ICameraDeviceSession的configureStreams_3_4的方法最终将需求传递给Provider。
+#### 创建Request
 
-到这里整个数据流已经配置完成，并且App也获取了Framework中的CameraCaptureSession对象，之后便可进行图像需求的下发了，在下发之前需要先创建一个Request，而App通过调用CameraDeviceImpl中的createCaptureRequest来实现，该方法在Framework中实现，内部会再去调用Camera Service中的AIDL接口createDefaultRequest，该接口的实现是CameraDeviceClient，在其内部又会去调用Camera3Device的createDefaultRequest方法，最后通过ICameraDeviceSession代理的constructDefaultRequestSettings方法将需求下发到Provider端去创建一个默认的Request配置，一旦操作完成，Provider会将配置上传至Service，进而给到App中。
+App通过调用CameraDeviceImpl中的createCaptureRequest来实现，该方法在Framework中实现，内部会再去调用Camera Service中的AIDL接口createDefaultRequest，该接口的实现是CameraDeviceClient，在其内部又会去调用Camera3Device的createDefaultRequest方法，最后将需求下发到Provider端去创建一个默认的Request配置，一旦操作完成，Provider会将配置上传至Service，进而给到App中。
 
 #### 处理图像需求 
 
-在创建Request成功之后，便可下发图像采集需求了，这里大致分为两个流程，一个是预览，一个拍照，两者差异主要体现在Camera Service中针对Request获取优先级上，一般拍照的Request优先级高于预览，具体表现是当预览Request在不断下发的时候，来了一次拍照需求，在Camera3Device 的RequestThread线程中，会优先下发此次拍照的Request。这里我们主要梳理下下发拍照request的大体流程：
+下发图像采集需求大致分为两个流程，一个是预览，一个拍照，两者差异主要体现在拍照的Request优先级高于预览，具体表现是当预览Request在不断下发的时候，来了一次拍照需求，在Camera3Device 的RequestThread线程中，会优先下发此次拍照的Request。这里我们主要梳理下下发拍照request的大体流程：
 
-下发拍照Request到Camera Service，其操作主要是由CameraDevcieClient的submitRequestList方法来实现，在该方法中，会调用Camera3Device的setStreamingRequestList方法，将需求发送到Camera3Device中，而Camera3Device将需求又加入到RequestThread中的RequestQueue中，并唤醒RequestThread线程，在该线程被唤醒后，会从RequestQueue中取出Request，通过之前获取的ICameraDeviceSession代理的processCaptureRequest_3_4方法将需求发送至Provider中，由于谷歌对于processCaptureRequest_3_4的限制，使其必须是非阻塞实现，所以一旦发送成功，便立即返回，在App端便等待这结果的回传。
+* 下发拍照Request到Camera Service，其操作主要是由CameraDevcieClient来实现，submitRequestList方法来实现，在该方法中，会调用Camera3Device的setStreamingRequestList方法，将需求发送到Camera3Device中，而Camera3Device将需求又加入到RequestThread中的RequestQueue中，并唤醒RequestThread线程，在该线程被唤醒后，会从RequestQueue中取出Request发送至Provider中。
 
 #### 接收图像结果 
 
 针对结果的获取是通过异步实现，主要分为两个部分，一个是事件的回传，一个是数据的回传，而数据中又根据流程的差异主要分为Meta Data和Image Data两个部分，接下来我们详细介绍下：
 
-在下发Request之后，首先从Provider端传来的是Shutter Notify，因为之前已经将Camera3Device作为ICameraDeviceCallback的实现传入Provider中，所以此时会调用Camera3Device的notify方法将事件传入Camera Service中，紧接着通过层层调用，将事件通过CameraDeviceClient的notifyShutter方法发送到CameraDeviceClient中，之后又通过打开相机设备时传入的Framework的CameraDeviceCallbacks接口的onCaptureStarted方法将事件最终传入Framework，进而给到App端。
+* 事件的回传：在下发Request之后，首先从Provider端传来的是Shutter Notify，因为之前已经将Camera3Device作为ICameraDeviceCallback的实现传入Provider中，所以此时会调用Camera3Device的notify方法将事件传入Camera Service中，紧接着通过层层调用，将事件通过CameraDeviceClient的notifyShutter方法发送到CameraDeviceClient中，之后又通过打开相机设备时传入的Framework的CameraDeviceCallbacks接口的onCaptureStarted方法将事件最终传入Framework，进而给到App端。
 
-在Shutter事件上报完成之后，当一旦有Meta Data生成，Camera Provider便会通过ICameraDeviceCallback的processCaptureResult_3_4方法将数据给到Camera Service，而该接口的实现对应的是Camera3Device的processCaptureResult_3_4方法，在该方法会通过层层调用，调用sendCaptureResult方法将Result放入一个mResultQueue中，并且通知FrameProcessorBase的线程去取出Result，并且将其发送至CameraDeviceClient中，之后通过内部的CameraDeviceCallbacks远程代理的onResultReceived方法将结果上传至Framework层，进而给到App中进行处理。
+* Meta Data生成：Camera Provider会通过ICameraDeviceCallback的processCaptureResult_3_4方法将数据给到Camera Service，而该接口的实现对应的是Camera3Device的processCaptureResult_3_4方法，在该方法会通过层层调用，调用sendCaptureResult方法将Result放入一个mResultQueue中，并且通知FrameProcessorBase的线程去取出Result，并且将其发送至CameraDeviceClient中，之后通过内部的CameraDeviceCallbacks远程代理的onResultReceived方法将结果上传至Framework层，进而给到App中进行处理。
 
-随后Image Data前期也会按照类似的流程走到Camera3Device中，但是会通过调用returnOutputBuffers方法将数据给到Camera3OutputStream中，而该Stream中会通过BufferQueue这一生产者消费者模式中的生产者的queue方法通知消费者对该buffer进行消费，而消费者正是App端的诸如ImageReader等拥有Surface的类，最后App便可以将图像数据取出进行后期处理了。
+* Image Data生成：前期也会按照类似的流程走到Camera3Device中，但是会通过调用returnOutputBuffers方法将数据给到Camera3OutputStream中，而该Stream中会通过BufferQueue这一生产者消费者模式中的生产者的queue方法通知消费者对该buffer进行消费，而消费者正是App端的诸如ImageReader等拥有Surface的类，最后App便可以将图像数据取出进行后期处理了。
 
 
 
@@ -180,11 +186,11 @@ deleteStream/createStream 分别是用于删除之前的数据流以及为新的
 
 硬件抽象层就是对Linux内核驱动程序的封装，向上提供接口，屏蔽低层的实现细节。也就是说，把对硬件的支持分成了两层，一层放在用户空间，一层放在内核空间，其中，硬件抽象层运行在用户空间，而Linux内核驱动程序运行在内核空间。Android分出硬件抽象层的原因是为了隐藏具体的硬件逻辑，从商业的角度看保护了相关厂家的利益。
 
-### 3.1 Camera HAL3 接口
+### 1 Camera HAL3 接口
 
 HAL基本结构hw_module_t，hw_device_t只有open和close方法很难满足Camera这样复杂的设备。因此谷歌通过将这两个基本结构嵌入到更大的结构体内部，同时在更大的结构内部定义了各自模块特有的方法，扩展了HAL接口。运用该方法针对Camera提出了HAL3接口。HAL3接口包括了用于代表一系列操作主体的结构体以及具体操作函数，接下来我们分别进行详细介绍：
 
-#### 3.1.1 核心结构体解析
+### 1.1 核心结构体解析
 
 #### camera_module_t以及camera3_device_t
 
@@ -256,7 +262,7 @@ typedef struct camera3_stream_buffer {
 } camera3_stream_buffer_t;
 ```
 
-#### 3.1.2 核心接口函数解析
+### 1.2 核心接口函数解析
 
 HAL3的核心接口都是在camera3_device_ops中被定义，该结构体定义了一系列的函数指针，用来指向平台厂商实际的实现方法，接下来就其中几个方法简单介绍下：
 
@@ -275,7 +281,7 @@ typedef struct camera3_device_ops {
 } camera3_device_ops_t;
 ```
 
-##### initialize：
+#### initialize：
 
 该方法必须在camera_module_t中的open方法之后，其它camera3_device_ops中方法之前被调用，主要用来将上层实现的回调方法注册到HAL中，并且根据需要在该方法中加入自定义的一些初始化操作。
 
@@ -299,7 +305,7 @@ typedef struct camera3_device_ops {
 
 当上层需要执行新的configure_streams的时候，需要调用该方法去尽可能快地清除掉当前已经在处理中的或者即将处理的任务，为配置数据流提供一个相对稳定的环境，flush会在所有的buffer都得以释放，所有request都成功返回后才真正返回。
 
-### 3.1.3 回调函数
+### 1.3 回调函数
 
 上面的一系列方法是上层直接对下控制Camera Hal，而一旦Camera Hal产生了数据或者事件的时候，可以通过camera3_callback_ops中定义的回调方法将数据或者事件返回至上层，该结构体定义如下：
 
@@ -329,13 +335,13 @@ void (*return_stream_buffers)( const struct camera3_callback_ops *, uint32_t num
 
 该方法用于异步返回HAL事件到上层，必须非阻塞实现。
 
-### 3.2 Camera Provider
+### 2 Camera Provider
 
 Android8.0Treble项目中，加入了Camera Provider这一抽象层，该层作为一个独立进程存在于整个系统中，并且通过HIDL成功地将Camera Hal Module从Camera Service中解耦出来，承担起了对Camera HAL的封装工作。在相机架构中，Camera Provider处于Camera Service和硬件抽象层之间。Camera Service通过HIDL请求Camera Provider，Camera Provider调用HAL3接口去控制相机。
 
 <img src="imag/Camera_Provider.png" alt="Camera_Provider" width="50%" height="50%" align="center"/>
 
-#### 3.2.1 Camera HIDL 接口
+#### 2.1 Camera HIDL 接口
 
 HIDL(接口定义语言)，其核心是接口的定义，而谷歌为了使开发者将注意力落在接口的定义上而不是机制的实现上，主动封装了HIDL机制的实现细节，开发者只需要通过*.hal文件定义接口，填充接口内部实际的实现即可，接下来来看下具体定义的几个主要接口：
 
@@ -378,7 +384,7 @@ HIDL(接口定义语言)，其核心是接口的定义，而谷歌为了使开�
 > processCaptureRequest_3_4：下发request到Provider中，一个request对应着一次图像需求。
 > close: 关闭当前会话。
 
-### 3.2.2 Camera Provider 主程序
+### 2.2 Camera Provider 主程序
 
 接下来进入到Provider内部去看看，整个进程是如何运转的，以下图为例进行分析:
 
@@ -401,11 +407,11 @@ HIDL(接口定义语言)，其核心是接口的定义，而谷歌为了使开�
   Camera Service通过调用ICameraDevcieSession的processCaptureRequest_3_4接口下发request请求到Provider中，在Provider中，最终依然会通过调用获取的camera3_device_t结构体内ops中的process_capture_request方法将此次请求下发到HAL中进行处理。
 
 
-# **五、相机驱动层–V4L2框架**
+# **四、相机驱动层–V4L2框架**
 
 驱动程序在系统内核空间中按照特定协议与相机硬件进行通信，从而达到控制各个硬件设备，获取图像数据的目的。V4L2英文是Video for Linux 2，该框架是诞生于Linux系统，用于提供一个标准的视频控制框架，其中一般默认会嵌入media controller框架中进行统一管理。v4l2提供给用户空间操作节点，media controller控制对于每一个设备的枚举控制能力，于此同时，由于v4l2包含了一定数量的子设备，而这一系列的子设备都是处于平级关系，但是在实际的图像采集过程中，子设备之间往往还存在着包含于被包含的关系，所以为了维护并管理这种关系，media controller针对多个子设备建立了的一个拓扑图，数据流也就按照这个拓扑图进行流转。
 
-#### 5.1 V4L2框架关键结构体
+### 1 V4L2框架关键结构体
 
 [详细结构体](imag/v4l2-device.h)
 
@@ -417,7 +423,7 @@ HIDL(接口定义语言)，其核心是接口的定义，而谷歌为了使开�
 
 
 
-### 5.2 v4l2操作流程简介
+### 2 v4l2操作流程简介
 
 整个对于v4l2的操作主要包含了如下几个主要流程：
 
@@ -437,7 +443,7 @@ HIDL(接口定义语言)，其核心是接口的定义，而谷歌为了使开�
 
 6. 将帧缓冲区出队：一旦数据流开始进行流转了，通过调用ioctl下发VIDIOC_DQBUF命令来获取帧缓冲区，并且将缓冲区的图像数据取出，进行预览、拍照或者录像的处理。处理完成之后，需要将此次缓冲区再次放入V4L2框架中的队列中等待下次的图像数据的填充。
 
-### 5.3 v4l2模块初始化
+### 3 v4l2模块初始化
 
 v4l2框架是在linux内核中实现的，会在系统启动的过程中通过标准的module_init方式进行初始化。而其初始化主要包含了v4l2_device的初始化和v4l2_subde子设备的初始化。由于驱动的具体实现都交由各个平台厂商进行实现，内部逻辑都各不相同，所以这边抽离出主要方法来进行梳理：
 
@@ -453,7 +459,7 @@ v4l2框架是在linux内核中实现的，会在系统启动的过程中通过�
 2. 创建对应的media_entity，并通过media_device_register_entity方法其添加到media controller中进行统一管理。
 3. 最后调用v4l2_device_register_subdev_nodes方法，为所有的设置了V4L2_SUBDEV_FL_HAS_DEVNODE属性的子设备创建设备节点。
 
-### 5.4 高通KMD框架
+### 4 高通KMD框架
 
 利用了V4L2可扩展这一特性，高通在相机驱动部分实现了自有的一套KMD框架。创建了一个整体相机控制者的CRM，它以节点video0暴露给用户空间，主要用于管理内核中的Session、Request以及与子设备，同时各个子模块都实现了各自的v4l2_subdev设备，并且以v4l2_subdev节点暴露给用户空间，与此同时，高通还创建了另一个video1设备Camera SYNC，该设备主要用于同步数据流，保证用户空间和内核空间的buffer能够高效得进行传递。
 
