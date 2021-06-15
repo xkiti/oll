@@ -8,91 +8,76 @@
 # 背景
 微信支付业务功能实现依托于Android Camera，为了能快速着手相关的业务开发需要快速掌握Camera原理。
 # 安卓相机架构概览
-安卓相机架构采用分层思想，下面的相机整体架构图很清晰地显示出了五层架构以及相互的关联接口：
+Android Camera框架将整个相机行为抽象为两个类型的对象一种静态的Device对象，另一种是动态的Session对象。openCamera方法调用后，经过层层调用，最终App通过回调拿到Device对象。有了Device，首先应该建立相机会话，在建立会话过程中需要先告诉相机App想要的数据类型（宽高、数据格式、旋转角度等）这个步骤叫做StreamConfigure，相机会话建立成功后App通过回调拿到Session对象，有了Session对象App就能使用相机功能了，主要的功能有预览、拍照、录像。
+
+Android Camera框架运用分层思想，将整个框架分为App、Camera Service、Camera Provider、HAL、Driver。如下图：
 
 <img src="imag/整体架构.png" alt="整体架构" width="50%" height="50%" />
-
+下面我将由上到下，通过介绍每一层完整的相机行为流程，加深对Camera框架的理解。
 # 一、应用层
 
-应用层处于整个框架的最上层，以相机应用呈现给用户。用户通过应用满足需求，而应用的功能实现需要调用一系列的Camera Api接口，具体的接口实现放在了Camera Framework中来完成。
+App层直接面对的是相机应用，应用通过调用Camera Api 2接口来实现相机功能。Camera Api 2的具体实现是在Camera Framework框架中。整体的过程如下图：
+<img src="imag/app_layer_gc.png" alt="app_layer_gc" width="50%" height="50%" />
 
-### 1.1 Camera Api v2 & Camera Framework
+### 相关接口和类
 
-Camera Api v1提供的几个标准方法(预览、拍照、录像)无法精确的控制底层硬件，无法满足应用场景的多元化。于是谷歌在Android5.0提出了Camera Api v2，支持了更多特性，比如逐帧控制曝光、感光度以及支持Raw格式的输出等。为了更加细致化地控制相机系统，Api v2将复杂的相机系统行为抽象成不同的接口类以及接口方法，主要有一下几个类：
+Camera Api 2与Camera Framework之间通过java接口的方式来进行通信。需要强调的是，App 与Camera Framework之间的通信是双向的，App 在使用Camera Api的过程中也会向Camera Framework注册回调接口。相关的接口和接口实现情况如下图：
+<img src="imag/app_api_framework.png" alt="app_api_framework" width="50%" height="50%" /> 
 
-#### CameraManager
+* CameraManager:被定义为一个系统服务，通过Context.getSystemService来获取，主要用于检测、打开相机以及相机属性的获取。
+* CameraDevice：代表了一个被打开的系统相机，用于创建CameraCaptureSession以及对于最后相机资源的释放。
+* CameraDevice.StateCallback:在App中实现。用于返回创建Camera设备的结果，onOpened表示成功并返回CameraDevice实例，onError返回错误信息。
+* CameraCaptureSession:代表了相机会话，建立了与Camera设备的通道，而之后对于Camera 设备的控制都是通过该通道来完成的
+* CameraCaptureSessioon.StateCallback:在App中实现。用于返回创建CameraCaptureSession的结果，onConfigured表示成功并返回CameraCaptureSession实例，onConfigureFailed返回错误信息。
 
-作为一个系统服务，主要用于检测以及打开系统相机。除此之外，还能提供当前Camera 设备支持的属性信息。
+* CameraCaptureSession.CaptureCallback：由App实现。用于返回来自Camera Framework的数据和事件，onCaptureStarted方法在下发图像需求之后立即被调用，告知App此次图像需求已经收到，onCaptureProgressed返回partial meta data，onCaptureCompleted返回meta data数据。
 
-#### CameraCaptureSession
+* CameraDeviceImpl：在Camera Framework中实现。代表了一个相机设备，其内部持有Camera Service代理对象，会话的创建以及会话请求等工作，都是通过请求Camera Service来实现的。
+* CameraCaptureSessionImpl：在Camera Framework中实现。每一个相机设备在一个时间段中，只能创建并存在一个CameraCaptureSession，其中该类包含了两种Session，一种是普通的，适用于一般情况下的会话操作，另一种是用于Reprocess流程的会话操作，该流程主要用于对于现有的图像数据进行再处理的操作。该类维护着来自实例化时传入的Surface列表，这些Surface正是包含了每一个图像请求的数据缓冲区。
 
-代表了一个具体的相机会话，建立了与相机设备的通道，而之后对于相机设备的控制都是通过该通道来完成的。当需要进行预览或者拍照时，首先通过该类创建一个Session，并且调用其startRepeatingRequest方法开启预览流程，或者调用capture方法开始一次拍照动作。
-
-#### CameraDevice.StateCallback
-
-主要用于返回创建Camera设备的结果，一旦创建成功相机框架会通过回调其onOpened方法将CameraDevice实例给到App，如果失败，则调用onError返回错误信息。
-
-#### CameraCaptureSession.StateCallback
-
-主要用于返回创建CameraCaptureSession的结果，成功则通过onConfigured方法返回一个CameraCaptureSession实例，如果失败则通过onConfigureFailed返回错误信息。
-
-#### CameraCaptureSession.CaptureCallback
-
-用于返回来自Camera Framework的数据和事件，其中onCaptureStarted方法在下发图像需求之后立即被调用，告知App此次图像需求已经收到；onCaptureProgressed方法在产生部分元数据的时候回调；onCaptureCompleted方法在图像采集完成，上传meta data数据时被调用。
-
-#### CaptureRequest
-
-该类用于表示一次图像请求，在需要进行预览或者拍照时，都需要创建一个CaptureRequest，并且可以针对图片的一系列诸如曝光/对焦设置参数都加入到该Request中，通过CameraCaptureSessin下发到相机系统中。
-
-#### TotalCaptureResult
-
-每当通过CameraDevice完成了一次CaptureRequest之后会生成一个TotalCaptureResult对象，该对象包含了此次抓取动作所产生的所有信息，其中含有关于硬件模块(包括Sensor/lens/flash)的配置信息以及相机设备的状态信息等。
-
-#### CaptureResult
-
-代表了某次抓取动作最终生成的图像信息，其中包括了此次关于硬件软件的配置信息以及输出的图像数据，以及显示了当前Camera设备的状态的元数据(meta data)，该类并不保证拥有所有的图像信息。
+Camera Framework为App提供的大部分功能实现，实际上是通过请求底层的Camera Service来完成的。Camera Service作为一个独立的服务进程运行在系统中，等待着其他进程的请求调用。
 
 # 二、服务层
 
-服务层位于Camera Framework层与Camera Provider层之间。Framework通过AIDL向Camera Service请求服务，Camera Service收到请求后通过HIDL将请求转发给Camera Provider，最终Camera Service通过回调拿到结果并将结果返回给Framework。所以此处我们重点关注AIDL以及Camera Service 主程序的实现。
+服务层位于Camera Framework层与Camera Provider层之间。Camera Framework通过AIDL向Camera Service发起请求，Camera Service收到请求后经过内部操作后，通过回调将结果返回返回给Framework。所以此处我们重点关注AIDL以及Camera Service 主程序的实现。
 
 ### 2.1.Camera AIDL 接口
 
-CameraService向外暴露的AIDL接口主要有一下几个：
+AIDL是谷歌设计的一种自定义语言，用来方便、快速地实现Binder IPC通信。这边不展开！服务层AIDL接口和接口实现情况如下图：
 
 ![aidl](imag/aidl.png?lastModify=1623414222)
 
-ICameraService.aidl定义了ICameraService 接口，实现主要通过CameraService类来实现，主要接口如下：
+* ICameraService.aidl定义了ICameraService 接口。在CameraService类来实现，主要接口如下：
 
-> getNumberOfCameras： 获取系统中支持的Camera 个数
->
-> connectDevice()：打开一个Camera 设备
->
-> addListener(): 添加针对Camera 设备以及闪光灯的监听对象 
+  getNumberOfCameras： 获取系统中支持的Camera 个数
 
-ICameraDeviceCallbacks.aidl文件中定义了ICameraDeviceCallbacks接口，其实现主要由Framework中的CameraDeviceCallbacks类进行实现，主要接口如下：
+  connectDevice()：打开一个Camera 设备
 
-> onResultReceived： 一旦Service收到结果数据，便会调用该接口发送至Framework
->
-> onCaptureStarted()： 一旦开始进行图像的采集，便调用该接口将部分信息以及时间戳上传至Framework
->
-> onDeviceError(): 一旦发生了错误，通过调用该接口通知Framework
+  addListener(): 添加针对Camera 设备以及闪光灯的监听对象 
 
-ICameraDeviceUser.aidl定义了ICameraDeviceUser接口，由CameraDeviceClient最终实现，主要接口如下：
+* ICameraDeviceCallbacks.aidl文件中定义了ICameraDeviceCallbacks接口。在Framework中的CameraDeviceCallbacks类实现，主要接口如下：
 
-> disconnect： 关闭Camera 设备
->
-> submitRequestList：发送request
->
-> beginConfigure： 开始配置Camera 设备，需要在所有关于数据流的操作之前
->
-> endConfigure： 结束关于Camera 设备的配置，该接口需要在所有Request下发之前被调用
->
-> createDefaultRequest： 创建一个具有默认配置的Request
+  onResultReceived： 一旦Service收到结果数据，便会调用该接口发送至Framework。
 
-ICameraServiceListener.aidl定义了ICameraServiceListener接口，由Framework中的CameraManagerGlobal类实现，主要接口如下：
+  onCaptureStarted()： 一旦开始进行图像的采集，便调用该接口将部分信息以及时间戳上传至Framework。
 
-> onStatusChanged： 用于告知当前Camera 设备的状态的变更
+  onDeviceError(): 一旦发生了错误，通过调用该接口通知Framework
+
+* ICameraDeviceUser.aidl定义了ICameraDeviceUser接口。由CameraDeviceClient类实现，主要接口如下：
+
+  disconnect： 关闭Camera 设备。
+
+  submitRequestList：发送request。
+
+  beginConfigure： 开始配置Camera 设备，需要在所有关于数据流的操作之前。
+
+  endConfigure： 结束关于Camera 设备的配置，该接口需要在所有Request下发之前被调用。
+
+  createDefaultRequest： 创建一个具有默认配置的Request。
+
+* ICameraServiceListener.aidl定义了ICameraServiceListener接口。由Framework中的CameraManagerGlobal类实现，主要接口如下：
+
+  onStatusChanged： 用于告知当前Camera 设备的状态的变更。
 
 ### 2.2 Camera Service 主程序
 
