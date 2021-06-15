@@ -111,7 +111,7 @@ CameraDeviceClient及其内部类是“动态”的，一次打开设备的操�
 
 首先我们看看CameraService是怎么运行起来的：
 
-![camera_service_start](imag/camera_service_start.png)
+<img src="imag/camera_start_.png" alt="camera_start_" width="70%" height="70%" align="center"/>
 
 当系统启动的时候会运行cameraserver程序， 在main方法中先初始化CameraService，最后将CameraService加入到service_manager中。在服务初始化的时候主要是实创建并初始化CameraProviderManager对象。而在CameraProviderManager初始化的过程中，主要做了三件事：
 
@@ -138,7 +138,11 @@ CameraDeviceClient及其内部类是“动态”的，一次打开设备的操�
 
 #### 打开相机设备 
 
-对于打开相机设备动作，内部实现比较复杂，接下来我们简单梳理下。 当Camera Framework调用ICameraService的connectDevice方法的时候就开始了打开相机动作。connectDevice方法主要做了两件事情：
+对于打开相机设备动作，内部实现比较复杂，接下来我们简单梳理下。
+
+<img src="imag/opencamera.png" alt="opencamera" />
+
+当Camera Framework调用ICameraService的connectDevice方法的时候就开始了打开相机动作。connectDevice方法主要做了两件事情：
 
 * 实例CameraDeviceClient对象，并将connectDevice方法传入的回调接口保存在其属性变量中，同时创建了Camera3Device对象。
 *  对CameraDeviceClient进行初始化，初始化完成后，通过保存的回调接口将自己传给Camera Framework，与之形成双向通信。
