@@ -12,17 +12,18 @@ Android Camera框架将整个相机行为抽象为两个类型的对象一种静
 
 Android Camera框架运用分层思想，将整个框架分为App、Camera Service、Camera Provider、HAL、Driver。如下图：
 
-<img src="imag/整体架构.png" alt="整体架构" width="50%" height="50%" />
-下面我将由上到下，通过介绍每一层完整的相机行为流程，加深对Camera框架的理解。
-# 一、应用层
+<img src="imag/整体架构.png" alt="整体架构" width="50%" height="50%" />  
 
+下面我将由上到下，通过介绍每一层完整的相机行为流程，加深对Camera框架的理解。  
+
+# 一、应用层
 App层直接面对的是相机应用，应用通过调用Camera Api 2接口来实现相机功能。Camera Api 2的具体实现是在Camera Framework框架中。整体的过程如下图：
-<img src="imag/app_layer_gc.png" alt="app_layer_gc" width="50%" height="50%" />
+<img src="imag/app_layer_gc.png" alt="app_layer_gc" width="70%" height="70%" />
 
 ### 相关接口和类
 
 Camera Api 2与Camera Framework之间通过java接口的方式来进行通信。需要强调的是，App 与Camera Framework之间的通信是双向的，App 在使用Camera Api的过程中也会向Camera Framework注册回调接口。相关的接口和接口实现情况如下图：
-<img src="imag/app_api_framework.png" alt="app_api_framework" width="50%" height="50%" /> 
+<img src="imag/app_api_framework.png" alt="app_api_framework" /> 
 
 * CameraManager:被定义为一个系统服务，通过Context.getSystemService来获取，主要用于检测、打开相机以及相机属性的获取。
 * CameraDevice：代表了一个被打开的系统相机，用于创建CameraCaptureSession以及对于最后相机资源的释放。
