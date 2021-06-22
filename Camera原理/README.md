@@ -5,8 +5,6 @@
 * [服务层](https://github.com/xkiti/oll/tree/main/Camera%E5%8E%9F%E7%90%86#二服务层)
 * [硬件抽象层](https://github.com/xkiti/oll/tree/main/Camera%E5%8E%9F%E7%90%86#三硬件抽象层)
 * [驱动层](https://github.com/xkiti/oll/tree/main/Camera%E5%8E%9F%E7%90%86#五相机驱动层V4L2框架)
-# 背景
-微信支付业务功能实现依托于Android Camera，为了能快速着手相关的业务开发需要快速掌握Camera原理。
 # 安卓相机架构概览
 Android Camera框架将整个相机行为抽象为两个类型的对象一种静态的Device对象，另一种是动态的Session对象。openCamera方法调用后，经过层层调用，最终App通过回调拿到Device对象。有了Device，首先应该建立相机会话，在建立会话过程中需要先告诉相机App想要的数据类型（宽高、数据格式、旋转角度等）这个步骤叫做StreamConfigure，相机会话建立成功后App通过回调拿到Session对象，有了Session对象App就能使用相机功能了，主要的功能有预览、拍照、录像。
 
